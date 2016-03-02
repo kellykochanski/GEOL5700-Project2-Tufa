@@ -11,8 +11,8 @@
 % %|--------Notes to reviewer---------------
 % This code models tufa growth in Mono Lake, CA.
 % *What are tufa?* Mono Lake is alkali, but many of the springs that feed
-% it are acidic. When the waters mix, they precipitate solid CO3,
-% which forms near-vertical towers.
+% it are acidic. When the waters mix, they precipitate solid salts,
+% which form near-vertical towers.
 % *Why Mono Lake?* The lake has a fabulous history of water piracy. It was
 % drained almost dry in the mid-1900s to water LA. Many once-buried
 % tufa are now exposed on the shore.
@@ -44,17 +44,18 @@ zV0 = zV0 + zVmax;
 zV0 = min(zV0, zVmax);
 
 % Random locations of acidic (tufa-building) springs
-num_springs = 15;                     
+num_springs = 30;                     
 tufa_i = round((Nx-1)*rand(num_springs, 1))+1; %number of nodes
 tufa_elevations = zV0(tufa_i);
 
 % Ask user to check initial topography
+subplot(2,1,1)
 hold on
-plot(xvector,zV0, 'k', 'linewidth', 2)
+area(xvector,zV0, 'facecolor', 'k')
 plot(xvector(tufa_i), tufa_elevations, '.r', 'markersize', 15)
+axis([0, Lx, min(zV0), max(zV0)])
 title('Initial topography with locations of tufa springs')
-disp('Showing initial topography... press any key to accept.')
-pause()
+disp('Showing initial topography...')
 
 %% How do tufa grow and collapse?
 % 1. Tufa grow, but only if they are underwater.
@@ -73,7 +74,7 @@ tufa_growth_rate = @(zT, zW, t) max(0, zW-zT)/(zW-zT).* ... 1 for underwater tuf
 % Towers lower than threshold are wider than tall - these never collapse.
 % Above this, collapse rate increases linearly.
 
-total_collapse_const = 0.001; % 1/m/year
+total_collapse_const = 0.01; % 1/m/year
 collapse_threshold   = 1; %m
 
 total_collapse_chance = @(zT)  (zT-collapse_threshold).*total_collapse_const;
@@ -104,7 +105,7 @@ while t < 1985
     t = t + dt;
 end; 
 while t < 1994
-    % restriction lifts
+    % restriction lifts, water falls again
     zW_managed = [zW_managed, zW_managed(end) - 0.24*dt];
     t = t + dt;
 end; 
@@ -123,13 +124,13 @@ while t <= end_time
     zW_managed = [zW_managed, zW_managed(end) - 0.28*dt];
     t = t + dt;
 end;
-% Yearly oscillation (currently regulated as max +/- 6ft or 1.8m)
+% Yearly oscillation (currently regulated as max +/- 1.8m but usually less)
 zW_yearly  = 0.3.*cos(2.*pi.*tvector);
 zWvector = zW_yearly + zW_managed;
 
 % Plot the historic water levels
-figure(2);
 set(gca,'fontsize', 14)
+subplot(2,1,2)
 plot(tvector, zWvector, 'b', 'linewidth', 2)
 title('Model of historic water elevations in Mono Lake')
 xlabel('Year'); ylabel('Water elevation (m)')
@@ -159,27 +160,38 @@ end
 tufa_heights = tufa_heights(:,2:end);
 
 %% Now we know topography, water levels, tufa heights. Animate!
-figure()
 disp('Showing water depth and tufa growth through time...')
-set(gca, 'fontsize', 14)
 for i = 1000:5:length(tvector)
-    plot([0,Lx],[zWvector(i), zWvector(i)], '-b') % water
+    subplot(2,1,1)
+    set(gca, 'fontsize', 14)
+    area([0,Lx],[zWvector(i), zWvector(i)], 'facecolor', 'b') % water
     hold on
-    area(xvector, zV0);                           % land
+    area(xvector, zV0, 'facecolor', 'k');                     % land
     axis([0, Lx, min(zV0), max(zV0)])
     for j = 1:num_springs
         tufa_x = xvector(tufa_i(j));
         plot([tufa_x, tufa_x],...
             [tufa_elevations(j), tufa_elevations(j)+tufa_heights(j,i)],...
-            'k', 'linewidth', 1.5)
+            'm', 'linewidth', 2)
     end
     title(sprintf('Year %d', round(tvector(i))))
     xlabel('Horizontal distance (m)')
     ylabel('Elevation (m)')
     pause(0.1)
     hold off
+    subplot(2,1,2)
+    plot(tvector, zWvector, 'b', 'linewidth', 2)
+    hold on
+    plot(tvector(i), zWvector(i), '.k')
+    title('Model of historic water elevations in Mono Lake')
+    xlabel('Year'); ylabel('Water elevation (m)')
+    hold off
 end
 
+disp('Do you want a plot of tower heights over time? (Press any key)')
+pause()
+
+% final plot of tufa tower heights through time
 figure()
 set(gca, 'fontsize', 14)
 plot(tvector,tufa_heights');
